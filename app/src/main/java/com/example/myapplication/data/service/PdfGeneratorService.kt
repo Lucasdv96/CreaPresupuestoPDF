@@ -5,9 +5,12 @@ import com.example.myapplication.data.db.entity.BudgetEntity
 import com.example.myapplication.data.db.entity.BudgetItemEntity
 import com.example.myapplication.utils.formatCurrency
 import com.example.myapplication.data.db.entity.SettingsEntity
+import com.itextpdf.io.font.constants.StandardFonts
 import com.itextpdf.io.image.ImageDataFactory
 import com.itextpdf.kernel.colors.ColorConstants
+import com.itextpdf.kernel.colors.DeviceGray
 import com.itextpdf.kernel.colors.DeviceRgb
+import com.itextpdf.kernel.font.PdfFontFactory
 import com.itextpdf.kernel.geom.Rectangle
 import com.itextpdf.kernel.pdf.PdfDocument
 import com.itextpdf.kernel.pdf.PdfWriter
@@ -28,6 +31,9 @@ import java.util.Date
 import java.util.Locale
 
 class PdfGeneratorService(private val context: Context) {
+
+    // Cambiá este texto con los datos reales del desarrollador
+    private val DEVELOPER_FOOTER = "Desarrollado por Lucas D.V. | lucas.dev@gmail.com"
 
     private val diagramDrawer = TechnicalDiagramDrawer()
 
@@ -76,8 +82,32 @@ class PdfGeneratorService(private val context: Context) {
 
         document.flush()
         addWatermarks(pdfDocument)
+        addDeveloperFooter(pdfDocument)
         document.close()
         return pdfFile.absolutePath
+    }
+
+    private fun addDeveloperFooter(pdfDocument: PdfDocument) {
+        try {
+            val font = PdfFontFactory.createFont(StandardFonts.HELVETICA)
+            val fontSize = 6.5f
+            val color = DeviceGray(0.60f)
+            val textWidth = font.getWidth(DEVELOPER_FOOTER, fontSize)
+
+            for (i in 1..pdfDocument.numberOfPages) {
+                val page = pdfDocument.getPage(i)
+                val pageSize = page.pageSize
+                val canvas = PdfCanvas(page.newContentStreamAfter(), page.resources, pdfDocument)
+                val x = (pageSize.width - textWidth) / 2f
+                canvas.setFillColor(color)
+                canvas.beginText()
+                canvas.setFontAndSize(font, fontSize)
+                canvas.moveText(x.toDouble(), 8.0)
+                canvas.showText(DEVELOPER_FOOTER)
+                canvas.endText()
+                canvas.release()
+            }
+        } catch (_: Exception) { }
     }
 
     private fun addWatermarks(pdfDocument: PdfDocument) {
