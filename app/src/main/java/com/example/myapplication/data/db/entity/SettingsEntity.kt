@@ -16,5 +16,6 @@ data class SettingsEntity(
     val logoPath: String = "",
     val primaryColor: String = "",
     val secondaryColor: String = "",
-    val termsConditions: String = ""
+    val termsConditions: String = "",
+    val businessType: String = "CERRAMIENTOS"
 )

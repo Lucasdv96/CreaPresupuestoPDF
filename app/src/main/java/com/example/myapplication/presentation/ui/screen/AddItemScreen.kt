@@ -40,10 +40,44 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.presentation.viewmodel.AddItemViewModel
 
+private val CERRAMIENTOS_TYPES = listOf("WINDOW", "DOOR", "RAILING", "OTHER")
+private val HERRERIA_TYPES = listOf(
+    "FENCE", "FENCE_DOOR", "RAILING", "GATE", "STAIR",
+    "GRILL", "GRILL_FRONT", "UNDER_COUNTER", "INDUSTRIAL_FURNITURE",
+    "TABLE", "CHAIR", "TRAILER", "STORAGE", "TRASH_CAN", "OTHER"
+)
+private val TYPES_WITH_DIMENSIONS = listOf(
+    "WINDOW", "DOOR", "RAILING",
+    "FENCE", "FENCE_DOOR", "GATE", "STAIR", "GRILL", "GRILL_FRONT",
+    "UNDER_COUNTER", "INDUSTRIAL_FURNITURE", "TRAILER", "STORAGE"
+)
+private val TYPES_WITH_PANELS = listOf("WINDOW", "DOOR")
+
+fun itemTypeLabel(type: String): String = when (type) {
+    "WINDOW" -> "Ventana"
+    "DOOR" -> "Puerta"
+    "RAILING" -> "Baranda"
+    "FENCE" -> "Reja"
+    "FENCE_DOOR" -> "Puerta Reja"
+    "GATE" -> "Portón"
+    "STAIR" -> "Escalera"
+    "GRILL" -> "Parrilla"
+    "GRILL_FRONT" -> "Frente de Parrilla"
+    "UNDER_COUNTER" -> "Bajo Mesada"
+    "INDUSTRIAL_FURNITURE" -> "Mueble Industrial"
+    "TABLE" -> "Mesa"
+    "CHAIR" -> "Silla"
+    "TRAILER" -> "Trailer"
+    "STORAGE" -> "Baulera"
+    "TRASH_CAN" -> "Tacho de Basura"
+    else -> "Otro"
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddItemScreen(
     viewModel: AddItemViewModel,
+    businessType: String = "CERRAMIENTOS",
     onNavigateBack: () -> Unit,
     onItemAdded: () -> Unit
 ) {
@@ -86,28 +120,15 @@ fun AddItemScreen(
                     onClick = { showTypeMenu = true },
                     modifier = Modifier.weight(0.7f)
                 ) {
-                    val displayType = when (uiState.type) {
-                        "WINDOW" -> "Ventana"
-                        "DOOR" -> "Puerta"
-                        "RAILING" -> "Baranda"
-                        "LABOR" -> "Mano de obra"
-                        else -> "Otro"
-                    }
-                    Text(displayType)
+                    Text(itemTypeLabel(uiState.type))
+                    val availableTypes = if (businessType == "HERRERIA") HERRERIA_TYPES else CERRAMIENTOS_TYPES
                     DropdownMenu(
                         expanded = showTypeMenu,
                         onDismissRequest = { showTypeMenu = false }
                     ) {
-                        listOf("WINDOW", "DOOR", "RAILING", "OTHER").forEach { type ->
-                            val displayName = when (type) {
-                                "WINDOW" -> "Ventana"
-                                "DOOR" -> "Puerta"
-                                "RAILING" -> "Baranda"
-                                "LABOR" -> "Mano de obra"
-                                else -> "Otro"
-                            }
+                        availableTypes.forEach { type ->
                             DropdownMenuItem(
-                                text = { Text(displayName) },
+                                text = { Text(itemTypeLabel(type)) },
                                 onClick = {
                                     viewModel.updateType(type)
                                     showTypeMenu = false
@@ -161,7 +182,7 @@ fun AddItemScreen(
                 )
             }
 
-            if (uiState.type in listOf("WINDOW", "DOOR", "RAILING")) {
+            if (uiState.type in TYPES_WITH_DIMENSIONS) {
                 SectionTitle("DIMENSIONES (para el plano técnico)")
 
                 Row(
@@ -184,7 +205,7 @@ fun AddItemScreen(
                     )
                 }
 
-                if (uiState.type in listOf("WINDOW", "DOOR")) {
+                if (uiState.type in TYPES_WITH_PANELS) {
                     FormTextField(
                         label = "Cantidad de hojas",
                         value = if (uiState.panelCount == 0) "" else uiState.panelCount.toString(),

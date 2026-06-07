@@ -1,6 +1,8 @@
 package com.example.myapplication.presentation.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -53,6 +55,12 @@ fun AppNavGraph(
     sharingService: com.example.myapplication.data.service.SharingService,
     startDestination: String = Destination.Home.route
 ) {
+    val sharedSettingsViewModel: SettingsViewModel = viewModel(
+        factory = SettingsViewModel.provideFactory(settingsRepository)
+    )
+    val settingsState by sharedSettingsViewModel.uiState.collectAsState()
+    val businessType = settingsState.businessType
+
     NavHost(
         navController = navController,
         startDestination = startDestination
@@ -134,6 +142,7 @@ fun AppNavGraph(
             )
             AddItemScreen(
                 viewModel = viewModel,
+                businessType = businessType,
                 onNavigateBack = { navController.navigateUp() },
                 onItemAdded = { navController.navigateUp() }
             )
@@ -147,6 +156,7 @@ fun AppNavGraph(
             )
             AddItemScreen(
                 viewModel = viewModel,
+                businessType = businessType,
                 onNavigateBack = { navController.navigateUp() },
                 onItemAdded = { navController.navigateUp() }
             )
@@ -177,11 +187,8 @@ fun AppNavGraph(
         }
 
         composable(Destination.Settings.route) {
-            val settingsViewModel: SettingsViewModel = viewModel(
-                factory = SettingsViewModel.provideFactory(settingsRepository)
-            )
             SettingsScreen(
-                viewModel = settingsViewModel,
+                viewModel = sharedSettingsViewModel,
                 onNavigateBack = { navController.navigateUp() }
             )
         }

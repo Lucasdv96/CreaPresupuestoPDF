@@ -183,12 +183,7 @@ class PdfGeneratorService(private val context: Context) {
         }
 
         items.forEach { item ->
-            val itemType = when (item.type) {
-                "WINDOW" -> "Ventana"
-                "DOOR" -> "Puerta"
-                "RAILING" -> "Baranda"
-                else -> "Otro"
-            }
+            val itemType = itemTypeDisplayName(item.type)
             val subtotal = item.quantity * item.unitPrice
 
             // 5. Descripción + especificaciones + notas en la misma celda
@@ -259,22 +254,13 @@ class PdfGeneratorService(private val context: Context) {
                 .setFontColor(headerColor)
         )
 
-        val typePrefixes = mutableMapOf("WINDOW" to 0, "DOOR" to 0, "RAILING" to 0, "OTHER" to 0)
+        val typeCounters = mutableMapOf<String, Int>()
 
         items.forEachIndexed { _, item ->
-            val prefix = when (item.type) {
-                "WINDOW"  -> { typePrefixes["WINDOW"] = typePrefixes["WINDOW"]!! + 1; "V" }
-                "DOOR"    -> { typePrefixes["DOOR"]   = typePrefixes["DOOR"]!!   + 1; "P" }
-                "RAILING" -> { typePrefixes["RAILING"]= typePrefixes["RAILING"]!!+ 1; "B" }
-                else      -> { typePrefixes["OTHER"]  = typePrefixes["OTHER"]!!  + 1; "O" }
-            }
-            val itemCode = "$prefix${typePrefixes[item.type]!!.toString().padStart(2, '0')}"
-            val typeLabel = when (item.type) {
-                "WINDOW"  -> "Ventana"
-                "DOOR"    -> "Puerta"
-                "RAILING" -> "Baranda"
-                else      -> "Otro"
-            }
+            typeCounters[item.type] = (typeCounters[item.type] ?: 0) + 1
+            val prefix = itemTypePrefix(item.type)
+            val itemCode = "$prefix${typeCounters[item.type]!!.toString().padStart(2, '0')}"
+            val typeLabel = itemTypeDisplayName(item.type)
 
             // Card outer table: full width, slight top margin
             val card = Table(UnitValue.createPercentArray(floatArrayOf(100f)))
@@ -352,6 +338,46 @@ class PdfGeneratorService(private val context: Context) {
             card.addCell(Cell().add(contentTable).setBorder(null).setPadding(0f))
             document.add(card)
         }
+    }
+
+    private fun itemTypeDisplayName(type: String): String = when (type) {
+        "WINDOW"               -> "Ventana"
+        "DOOR"                 -> "Puerta"
+        "RAILING"              -> "Baranda"
+        "FENCE"                -> "Reja"
+        "FENCE_DOOR"           -> "Puerta Reja"
+        "GATE"                 -> "Portón"
+        "STAIR"                -> "Escalera"
+        "GRILL"                -> "Parrilla"
+        "GRILL_FRONT"          -> "Frente de Parrilla"
+        "UNDER_COUNTER"        -> "Bajo Mesada"
+        "INDUSTRIAL_FURNITURE" -> "Mueble Industrial"
+        "TABLE"                -> "Mesa"
+        "CHAIR"                -> "Silla"
+        "TRAILER"              -> "Trailer"
+        "STORAGE"              -> "Baulera"
+        "TRASH_CAN"            -> "Tacho de Basura"
+        else                   -> "Otro"
+    }
+
+    private fun itemTypePrefix(type: String): String = when (type) {
+        "WINDOW"               -> "V"
+        "DOOR"                 -> "P"
+        "RAILING"              -> "B"
+        "FENCE"                -> "R"
+        "FENCE_DOOR"           -> "PR"
+        "GATE"                 -> "PT"
+        "STAIR"                -> "ES"
+        "GRILL"                -> "PA"
+        "GRILL_FRONT"          -> "FP"
+        "UNDER_COUNTER"        -> "BM"
+        "INDUSTRIAL_FURNITURE" -> "MI"
+        "TABLE"                -> "ME"
+        "CHAIR"                -> "SI"
+        "TRAILER"              -> "TR"
+        "STORAGE"              -> "BA"
+        "TRASH_CAN"            -> "TB"
+        else                   -> "O"
     }
 
     private fun formatDate(timestamp: Long): String =

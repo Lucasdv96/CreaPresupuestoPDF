@@ -29,7 +29,12 @@ class TechnicalDiagramDrawer {
         logoImageData: com.itextpdf.io.image.ImageData? = null
     ): Image? {
         if (item.widthMm <= 0 || item.heightMm <= 0) return null
-        if (item.type !in listOf("WINDOW", "DOOR", "RAILING")) return null
+        val supportedTypes = listOf(
+            "WINDOW", "DOOR", "RAILING",
+            "FENCE", "FENCE_DOOR", "GATE", "STAIR", "GRILL", "GRILL_FRONT",
+            "UNDER_COUNTER", "INDUSTRIAL_FURNITURE", "TRAILER", "STORAGE"
+        )
+        if (item.type !in supportedTypes) return null
 
         val xObject = PdfFormXObject(Rectangle(CANVAS_WIDTH, CANVAS_HEIGHT))
         val canvas = PdfCanvas(xObject, pdfDocument)
@@ -63,9 +68,18 @@ class TechnicalDiagramDrawer {
         val originY = MARGIN_BOTTOM + (DRAW_AREA_H - drawH) / 2f
 
         when (item.type) {
-            "WINDOW" -> drawWindow(canvas, originX, originY, drawW, drawH, item.panelCount.coerceAtLeast(1), item.panelTypes)
-            "DOOR"   -> drawDoor(canvas, originX, originY, drawW, drawH, item.panelCount.coerceAtLeast(1))
-            "RAILING" -> drawRailing(canvas, originX, originY, drawW, drawH)
+            "WINDOW"               -> drawWindow(canvas, originX, originY, drawW, drawH, item.panelCount.coerceAtLeast(1), item.panelTypes)
+            "DOOR"                 -> drawDoor(canvas, originX, originY, drawW, drawH, item.panelCount.coerceAtLeast(1))
+            "RAILING"              -> drawRailing(canvas, originX, originY, drawW, drawH)
+            "FENCE"                -> drawFence(canvas, originX, originY, drawW, drawH)
+            "FENCE_DOOR"           -> drawFenceDoor(canvas, originX, originY, drawW, drawH)
+            "GATE"                 -> drawGate(canvas, originX, originY, drawW, drawH)
+            "STAIR"                -> drawStair(canvas, originX, originY, drawW, drawH)
+            "GRILL"                -> drawGrill(canvas, originX, originY, drawW, drawH)
+            "GRILL_FRONT"          -> drawGrillFront(canvas, originX, originY, drawW, drawH)
+            "UNDER_COUNTER"        -> drawUnderCounter(canvas, originX, originY, drawW, drawH)
+            "INDUSTRIAL_FURNITURE" -> drawIndustrialFurniture(canvas, originX, originY, drawW, drawH)
+            else                   -> drawGenericItem(canvas, originX, originY, drawW, drawH)
         }
 
         drawDimensions(canvas, font, originX, originY, drawW, drawH, item.widthMm, item.heightMm)
@@ -240,6 +254,196 @@ class TechnicalDiagramDrawer {
 
         // Reset fill to black
         canvas.setFillColor(com.itextpdf.kernel.colors.DeviceGray(0f))
+    }
+
+    // ── FENCE (Reja) ──────────────────────────────────────────────────────────
+
+    private fun drawFence(canvas: PdfCanvas, x: Float, y: Float, w: Float, h: Float) {
+        val railH = (h * 0.08f).coerceAtLeast(4f).coerceAtMost(7f)
+        val barW  = 2.5f
+        val count = (w / 8f).toInt().coerceAtLeast(3)
+
+        canvas.setLineWidth(1.5f)
+        // Top rail
+        canvas.rectangle(x.toDouble(), (y + h - railH).toDouble(), w.toDouble(), railH.toDouble())
+        canvas.stroke()
+        // Bottom rail
+        canvas.rectangle(x.toDouble(), y.toDouble(), w.toDouble(), railH.toDouble())
+        canvas.stroke()
+
+        // Vertical bars
+        canvas.setLineWidth(0.8f)
+        for (i in 0..count) {
+            val bx = x + w * i.toFloat() / count.toFloat() - barW / 2f
+            canvas.rectangle(bx.toDouble(), y.toDouble(), barW.toDouble(), h.toDouble())
+            canvas.stroke()
+        }
+    }
+
+    // ── FENCE DOOR (Puerta Reja) ──────────────────────────────────────────────
+
+    private fun drawFenceDoor(canvas: PdfCanvas, x: Float, y: Float, w: Float, h: Float) {
+        drawFence(canvas, x, y, w, h)
+        // Swing arc over the fence
+        canvas.setLineWidth(0.8f)
+        val r = (w * 0.6f).toDouble()
+        canvas.arc(x.toDouble(), y.toDouble(), (x + r * 2).toDouble(), (y + r * 2).toDouble(), 0.0, 90.0)
+        canvas.stroke()
+    }
+
+    // ── GATE (Portón) ─────────────────────────────────────────────────────────
+
+    private fun drawGate(canvas: PdfCanvas, x: Float, y: Float, w: Float, h: Float) {
+        val midX = x + w / 2f
+        // Left panel fence
+        drawFence(canvas, x, y, w / 2f - 1f, h)
+        // Right panel fence
+        drawFence(canvas, midX + 1f, y, w / 2f - 1f, h)
+        // Center post
+        canvas.setLineWidth(2f)
+        canvas.moveTo(midX.toDouble(), y.toDouble())
+        canvas.lineTo(midX.toDouble(), (y + h).toDouble())
+        canvas.stroke()
+    }
+
+    // ── STAIR (Escalera) ──────────────────────────────────────────────────────
+
+    private fun drawStair(canvas: PdfCanvas, x: Float, y: Float, w: Float, h: Float) {
+        val steps = 5
+        val stepW = w / steps
+        val stepH = h / steps
+        canvas.setLineWidth(1.2f)
+        // Outer frame
+        canvas.rectangle(x.toDouble(), y.toDouble(), w.toDouble(), h.toDouble())
+        canvas.stroke()
+        // Steps (side view)
+        canvas.setLineWidth(0.8f)
+        for (i in 1 until steps) {
+            val sx = x + stepW * i
+            val sy = y + stepH * i
+            // Horizontal tread
+            canvas.moveTo((sx - stepW).toDouble(), sy.toDouble())
+            canvas.lineTo(sx.toDouble(), sy.toDouble())
+            canvas.stroke()
+            // Vertical riser
+            canvas.moveTo(sx.toDouble(), (sy - stepH).toDouble())
+            canvas.lineTo(sx.toDouble(), sy.toDouble())
+            canvas.stroke()
+        }
+    }
+
+    // ── GRILL (Parrilla) ──────────────────────────────────────────────────────
+
+    private fun drawGrill(canvas: PdfCanvas, x: Float, y: Float, w: Float, h: Float) {
+        canvas.setLineWidth(1.5f)
+        canvas.rectangle(x.toDouble(), y.toDouble(), w.toDouble(), h.toDouble())
+        canvas.stroke()
+        // Horizontal grill bars
+        val rows = 6
+        canvas.setLineWidth(1.2f)
+        for (i in 1 until rows) {
+            val gy = y + h * i.toFloat() / rows.toFloat()
+            canvas.moveTo((x + 4f).toDouble(), gy.toDouble())
+            canvas.lineTo((x + w - 4f).toDouble(), gy.toDouble())
+            canvas.stroke()
+        }
+        // Vertical supports
+        canvas.setLineWidth(0.6f)
+        for (i in listOf(0.25f, 0.5f, 0.75f)) {
+            val gx = x + w * i
+            canvas.moveTo(gx.toDouble(), y.toDouble())
+            canvas.lineTo(gx.toDouble(), (y + h).toDouble())
+            canvas.stroke()
+        }
+    }
+
+    // ── GRILL FRONT (Frente de Parrilla) ──────────────────────────────────────
+
+    private fun drawGrillFront(canvas: PdfCanvas, x: Float, y: Float, w: Float, h: Float) {
+        val shelfH = h * 0.15f
+        canvas.setLineWidth(1.5f)
+        canvas.rectangle(x.toDouble(), y.toDouble(), w.toDouble(), h.toDouble())
+        canvas.stroke()
+        // Horizontal shelves
+        canvas.setLineWidth(1f)
+        for (i in 1..4) {
+            val sy = y + h * i.toFloat() / 5f
+            canvas.moveTo((x + 2f).toDouble(), sy.toDouble())
+            canvas.lineTo((x + w - 2f).toDouble(), sy.toDouble())
+            canvas.stroke()
+        }
+        // Bottom base
+        canvas.setLineWidth(2f)
+        canvas.rectangle(x.toDouble(), y.toDouble(), w.toDouble(), shelfH.toDouble())
+        canvas.stroke()
+    }
+
+    // ── UNDER COUNTER (Bajo Mesada) ───────────────────────────────────────────
+
+    private fun drawUnderCounter(canvas: PdfCanvas, x: Float, y: Float, w: Float, h: Float) {
+        val counterH = h * 0.12f
+        canvas.setLineWidth(2f)
+        // Counter top
+        canvas.rectangle(x.toDouble(), (y + h - counterH).toDouble(), w.toDouble(), counterH.toDouble())
+        canvas.stroke()
+        // Cabinet body
+        canvas.setLineWidth(1.2f)
+        canvas.rectangle(x.toDouble(), y.toDouble(), w.toDouble(), (h - counterH).toDouble())
+        canvas.stroke()
+        // Door split
+        canvas.setLineWidth(0.6f)
+        val midX = x + w / 2f
+        canvas.moveTo(midX.toDouble(), y.toDouble())
+        canvas.lineTo(midX.toDouble(), (y + h - counterH).toDouble())
+        canvas.stroke()
+        // Handles
+        for (side in listOf(0.35f, 0.65f)) {
+            val hx = x + w * side
+            val hy = y + (h - counterH) / 2f
+            canvas.circle(hx.toDouble(), hy.toDouble(), 2.5)
+            canvas.stroke()
+        }
+    }
+
+    // ── INDUSTRIAL FURNITURE (Mueble Industrial) ──────────────────────────────
+
+    private fun drawIndustrialFurniture(canvas: PdfCanvas, x: Float, y: Float, w: Float, h: Float) {
+        canvas.setLineWidth(1.5f)
+        canvas.rectangle(x.toDouble(), y.toDouble(), w.toDouble(), h.toDouble())
+        canvas.stroke()
+        // Shelves
+        canvas.setLineWidth(1f)
+        val shelves = 4
+        for (i in 1 until shelves) {
+            val sy = y + h * i.toFloat() / shelves.toFloat()
+            canvas.moveTo((x + 2f).toDouble(), sy.toDouble())
+            canvas.lineTo((x + w - 2f).toDouble(), sy.toDouble())
+            canvas.stroke()
+        }
+        // Side columns
+        canvas.setLineWidth(2f)
+        canvas.moveTo((x + 3f).toDouble(), y.toDouble())
+        canvas.lineTo((x + 3f).toDouble(), (y + h).toDouble())
+        canvas.stroke()
+        canvas.moveTo((x + w - 3f).toDouble(), y.toDouble())
+        canvas.lineTo((x + w - 3f).toDouble(), (y + h).toDouble())
+        canvas.stroke()
+    }
+
+    // ── GENERIC (Trailer, Baulera, etc.) ──────────────────────────────────────
+
+    private fun drawGenericItem(canvas: PdfCanvas, x: Float, y: Float, w: Float, h: Float) {
+        canvas.setLineWidth(2f)
+        canvas.rectangle(x.toDouble(), y.toDouble(), w.toDouble(), h.toDouble())
+        canvas.stroke()
+        // Diagonal cross to indicate a generic item
+        canvas.setLineWidth(0.4f)
+        canvas.moveTo(x.toDouble(), y.toDouble())
+        canvas.lineTo((x + w).toDouble(), (y + h).toDouble())
+        canvas.stroke()
+        canvas.moveTo((x + w).toDouble(), y.toDouble())
+        canvas.lineTo(x.toDouble(), (y + h).toDouble())
+        canvas.stroke()
     }
 
     // ── DIMENSION LINES ───────────────────────────────────────────────────────
