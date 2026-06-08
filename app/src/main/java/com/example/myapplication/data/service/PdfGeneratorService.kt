@@ -32,7 +32,8 @@ import java.util.Locale
 
 class PdfGeneratorService(private val context: Context) {
 
-    private val DEVELOPER_FOOTER = "App creada por Lucas Del Valle — Fullstack Developer  |  lucas.delvalle1996@gmail.com  |  +54 2267 450234"
+    private val FOOTER_LINE1 = "App creada por Lucas Del Valle · Fullstack Developer  |  lucas.delvalle1996@gmail.com  |  wa.me/542267450234"
+    private val FOOTER_LINE2 = "lucasdv-developer.vercel.app  |  linkedin.com/in/lucas-del-valle-740277163"
 
     private val diagramDrawer = TechnicalDiagramDrawer()
 
@@ -88,34 +89,41 @@ class PdfGeneratorService(private val context: Context) {
 
     private fun addDeveloperFooter(pdfDocument: PdfDocument) {
         try {
-            val font  = PdfFontFactory.createFont(StandardFonts.HELVETICA)
+            val font     = PdfFontFactory.createFont(StandardFonts.HELVETICA)
             val fontSize = 6.5f
-            val color = DeviceGray(0.55f)
-            val textWidth = font.getWidth(DEVELOPER_FOOTER, fontSize)
+            val color    = DeviceGray(0.55f)
+            val margin   = 36f
 
             for (i in 1..pdfDocument.numberOfPages) {
                 val page     = pdfDocument.getPage(i)
                 val pageSize = page.pageSize
                 val canvas   = PdfCanvas(page.newContentStreamAfter(), page.resources, pdfDocument)
-                val margin   = 36f   // margen lateral igual al del documento
-                val lineY    = 18f
-                val textY    = 9f
 
-                // Línea separadora sutil
+                // Línea separadora
                 canvas.setStrokeColor(DeviceGray(0.75f))
                 canvas.setLineWidth(0.4f)
-                canvas.moveTo(margin.toDouble(), lineY.toDouble())
-                canvas.lineTo((pageSize.width - margin).toDouble(), lineY.toDouble())
+                canvas.moveTo(margin.toDouble(), 26.0)
+                canvas.lineTo((pageSize.width - margin).toDouble(), 26.0)
                 canvas.stroke()
 
-                // Texto centrado
-                val x = (pageSize.width - textWidth) / 2f
                 canvas.setFillColor(color)
+
+                // Línea 1 — nombre, email, WhatsApp
+                val w1 = font.getWidth(FOOTER_LINE1, fontSize)
                 canvas.beginText()
                 canvas.setFontAndSize(font, fontSize)
-                canvas.moveText(x.toDouble(), textY.toDouble())
-                canvas.showText(DEVELOPER_FOOTER)
+                canvas.moveText(((pageSize.width - w1) / 2f).toDouble(), 16.0)
+                canvas.showText(FOOTER_LINE1)
                 canvas.endText()
+
+                // Línea 2 — web + LinkedIn
+                val w2 = font.getWidth(FOOTER_LINE2, fontSize)
+                canvas.beginText()
+                canvas.setFontAndSize(font, fontSize)
+                canvas.moveText(((pageSize.width - w2) / 2f).toDouble(), 8.0)
+                canvas.showText(FOOTER_LINE2)
+                canvas.endText()
+
                 canvas.release()
             }
         } catch (_: Exception) { }
