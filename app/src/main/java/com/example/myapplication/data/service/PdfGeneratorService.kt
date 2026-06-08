@@ -32,8 +32,7 @@ import java.util.Locale
 
 class PdfGeneratorService(private val context: Context) {
 
-    // Cambiá este texto con los datos reales del desarrollador
-    private val DEVELOPER_FOOTER = "Desarrollado por Lucas D.V. | lucas.dev@gmail.com"
+    private val DEVELOPER_FOOTER = "App creada por Lucas Del Valle — Fullstack Developer  |  lucas.delvalle1996@gmail.com  |  +54 2267 450234"
 
     private val diagramDrawer = TechnicalDiagramDrawer()
 
@@ -81,7 +80,7 @@ class PdfGeneratorService(private val context: Context) {
         }
 
         document.flush()
-        addWatermarks(pdfDocument)
+        addWatermarks(pdfDocument, settings.logoPath)
         addDeveloperFooter(pdfDocument)
         document.close()
         return pdfFile.absolutePath
@@ -89,20 +88,32 @@ class PdfGeneratorService(private val context: Context) {
 
     private fun addDeveloperFooter(pdfDocument: PdfDocument) {
         try {
-            val font = PdfFontFactory.createFont(StandardFonts.HELVETICA)
+            val font  = PdfFontFactory.createFont(StandardFonts.HELVETICA)
             val fontSize = 6.5f
-            val color = DeviceGray(0.60f)
+            val color = DeviceGray(0.55f)
             val textWidth = font.getWidth(DEVELOPER_FOOTER, fontSize)
 
             for (i in 1..pdfDocument.numberOfPages) {
-                val page = pdfDocument.getPage(i)
+                val page     = pdfDocument.getPage(i)
                 val pageSize = page.pageSize
-                val canvas = PdfCanvas(page.newContentStreamAfter(), page.resources, pdfDocument)
+                val canvas   = PdfCanvas(page.newContentStreamAfter(), page.resources, pdfDocument)
+                val margin   = 36f   // margen lateral igual al del documento
+                val lineY    = 18f
+                val textY    = 9f
+
+                // Línea separadora sutil
+                canvas.setStrokeColor(DeviceGray(0.75f))
+                canvas.setLineWidth(0.4f)
+                canvas.moveTo(margin.toDouble(), lineY.toDouble())
+                canvas.lineTo((pageSize.width - margin).toDouble(), lineY.toDouble())
+                canvas.stroke()
+
+                // Texto centrado
                 val x = (pageSize.width - textWidth) / 2f
                 canvas.setFillColor(color)
                 canvas.beginText()
                 canvas.setFontAndSize(font, fontSize)
-                canvas.moveText(x.toDouble(), 8.0)
+                canvas.moveText(x.toDouble(), textY.toDouble())
                 canvas.showText(DEVELOPER_FOOTER)
                 canvas.endText()
                 canvas.release()
@@ -110,12 +121,22 @@ class PdfGeneratorService(private val context: Context) {
         } catch (_: Exception) { }
     }
 
-    private fun addWatermarks(pdfDocument: PdfDocument) {
+    private fun addWatermarks(pdfDocument: PdfDocument, companyLogoPath: String) {
         try {
-            val resId = context.resources.getIdentifier("logo_watermark", "raw", context.packageName)
-            if (resId == 0) return
-            val logoBytes = context.resources.openRawResource(resId).use { it.readBytes() }
-            val imageData = ImageDataFactory.create(logoBytes)
+            // Usa el logo de la empresa configurado; si no hay, cae al recurso raw
+            val imageData = if (companyLogoPath.isNotEmpty()) {
+                val f = java.io.File(companyLogoPath)
+                if (f.exists()) ImageDataFactory.create(f.absolutePath)
+                else {
+                    val resId = context.resources.getIdentifier("logo_watermark", "raw", context.packageName)
+                    if (resId == 0) return
+                    ImageDataFactory.create(context.resources.openRawResource(resId).use { it.readBytes() })
+                }
+            } else {
+                val resId = context.resources.getIdentifier("logo_watermark", "raw", context.packageName)
+                if (resId == 0) return
+                ImageDataFactory.create(context.resources.openRawResource(resId).use { it.readBytes() })
+            }
 
             for (i in 1..pdfDocument.numberOfPages) {
                 try {
