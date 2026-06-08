@@ -5,17 +5,16 @@ import com.example.myapplication.data.db.entity.BudgetEntity
 import com.example.myapplication.data.db.entity.BudgetItemEntity
 import com.example.myapplication.utils.formatCurrency
 import com.example.myapplication.data.db.entity.SettingsEntity
-import com.itextpdf.io.font.constants.StandardFonts
 import com.itextpdf.io.image.ImageDataFactory
 import com.itextpdf.kernel.colors.ColorConstants
 import com.itextpdf.kernel.colors.DeviceGray
 import com.itextpdf.kernel.colors.DeviceRgb
-import com.itextpdf.kernel.font.PdfFontFactory
 import com.itextpdf.kernel.geom.Rectangle
 import com.itextpdf.kernel.pdf.PdfDocument
 import com.itextpdf.kernel.pdf.PdfWriter
 import com.itextpdf.kernel.pdf.canvas.PdfCanvas
 import com.itextpdf.kernel.pdf.extgstate.PdfExtGState
+import com.itextpdf.layout.Canvas
 import com.itextpdf.layout.Document
 import com.itextpdf.layout.borders.SolidBorder
 import com.itextpdf.layout.element.Cell
@@ -90,44 +89,37 @@ class PdfGeneratorService(private val context: Context) {
 
     private fun addDeveloperFooter(pdfDocument: PdfDocument) {
         try {
-            val font     = PdfFontFactory.createFont(StandardFonts.HELVETICA)
-            val fontSize = 7.5f
-            val color    = DeviceGray(0.40f)
-            val margin   = 36f
+            val color      = DeviceGray(0.40f)
+            val leftMargin = 36f
 
             for (i in 1..pdfDocument.numberOfPages) {
-                val page     = pdfDocument.getPage(i)
-                val pageSize = page.pageSize
-                val canvas   = PdfCanvas(page.newContentStreamAfter(), page.resources, pdfDocument)
+                val page       = pdfDocument.getPage(i)
+                val pageSize   = page.pageSize
+                val usableW    = pageSize.width - leftMargin * 2
+
+                val pdfCanvas = PdfCanvas(page.newContentStreamAfter(), page.resources, pdfDocument)
 
                 // Línea separadora
-                canvas.setStrokeColor(DeviceGray(0.65f))
-                canvas.setLineWidth(0.5f)
-                canvas.moveTo(margin.toDouble(), 48.0)
-                canvas.lineTo((pageSize.width - margin).toDouble(), 48.0)
-                canvas.stroke()
+                pdfCanvas.setStrokeColor(DeviceGray(0.65f))
+                    .setLineWidth(0.5f)
+                    .moveTo(leftMargin.toDouble(), 52.0)
+                    .lineTo((pageSize.width - leftMargin).toDouble(), 52.0)
+                    .stroke()
 
-                canvas.setFillColor(color)
+                // Texto via Canvas layout (maneja registro de fuentes automáticamente)
+                val footerRect = Rectangle(leftMargin, 10f, usableW, 44f)
+                Canvas(pdfCanvas, footerRect).use { layoutCanvas ->
+                    layoutCanvas.add(
+                        Paragraph("$FOOTER_LINE1\n$FOOTER_LINE2")
+                            .setFontSize(7.5f)
+                            .setFontColor(color)
+                            .setTextAlignment(TextAlignment.CENTER)
+                            .setMargin(0f)
+                            .setMultipliedLeading(1.4f)
+                    )
+                }
 
-                // Línea 1 — nombre, email, WhatsApp
-                val w1 = font.getWidth(FOOTER_LINE1, fontSize)
-                val x1 = ((pageSize.width - w1) / 2f).coerceAtLeast(margin)
-                canvas.beginText()
-                canvas.setFontAndSize(font, fontSize)
-                canvas.moveText(x1.toDouble(), 36.0)
-                canvas.showText(FOOTER_LINE1)
-                canvas.endText()
-
-                // Línea 2 — web + LinkedIn
-                val w2 = font.getWidth(FOOTER_LINE2, fontSize)
-                val x2 = ((pageSize.width - w2) / 2f).coerceAtLeast(margin)
-                canvas.beginText()
-                canvas.setFontAndSize(font, fontSize)
-                canvas.moveText(x2.toDouble(), 24.0)
-                canvas.showText(FOOTER_LINE2)
-                canvas.endText()
-
-                canvas.release()
+                pdfCanvas.release()
             }
         } catch (_: Exception) { }
     }
