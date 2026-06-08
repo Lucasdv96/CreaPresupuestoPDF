@@ -52,6 +52,7 @@ class PdfGeneratorService(private val context: Context) {
         val writer = PdfWriter(pdfFile.absolutePath)
         val pdfDocument = PdfDocument(writer)
         val document = Document(pdfDocument)
+        document.setBottomMargin(62f)
 
         addCompanyHeader(document, settings)
         document.add(Paragraph("\n"))
@@ -90,8 +91,8 @@ class PdfGeneratorService(private val context: Context) {
     private fun addDeveloperFooter(pdfDocument: PdfDocument) {
         try {
             val font     = PdfFontFactory.createFont(StandardFonts.HELVETICA)
-            val fontSize = 6.5f
-            val color    = DeviceGray(0.55f)
+            val fontSize = 7.5f
+            val color    = DeviceGray(0.40f)
             val margin   = 36f
 
             for (i in 1..pdfDocument.numberOfPages) {
@@ -100,27 +101,29 @@ class PdfGeneratorService(private val context: Context) {
                 val canvas   = PdfCanvas(page.newContentStreamAfter(), page.resources, pdfDocument)
 
                 // Línea separadora
-                canvas.setStrokeColor(DeviceGray(0.75f))
-                canvas.setLineWidth(0.4f)
-                canvas.moveTo(margin.toDouble(), 26.0)
-                canvas.lineTo((pageSize.width - margin).toDouble(), 26.0)
+                canvas.setStrokeColor(DeviceGray(0.65f))
+                canvas.setLineWidth(0.5f)
+                canvas.moveTo(margin.toDouble(), 48.0)
+                canvas.lineTo((pageSize.width - margin).toDouble(), 48.0)
                 canvas.stroke()
 
                 canvas.setFillColor(color)
 
                 // Línea 1 — nombre, email, WhatsApp
                 val w1 = font.getWidth(FOOTER_LINE1, fontSize)
+                val x1 = ((pageSize.width - w1) / 2f).coerceAtLeast(margin)
                 canvas.beginText()
                 canvas.setFontAndSize(font, fontSize)
-                canvas.moveText(((pageSize.width - w1) / 2f).toDouble(), 16.0)
+                canvas.moveText(x1.toDouble(), 36.0)
                 canvas.showText(FOOTER_LINE1)
                 canvas.endText()
 
                 // Línea 2 — web + LinkedIn
                 val w2 = font.getWidth(FOOTER_LINE2, fontSize)
+                val x2 = ((pageSize.width - w2) / 2f).coerceAtLeast(margin)
                 canvas.beginText()
                 canvas.setFontAndSize(font, fontSize)
-                canvas.moveText(((pageSize.width - w2) / 2f).toDouble(), 8.0)
+                canvas.moveText(x2.toDouble(), 24.0)
                 canvas.showText(FOOTER_LINE2)
                 canvas.endText()
 

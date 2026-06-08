@@ -34,6 +34,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -44,9 +45,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import com.example.myapplication.data.db.entity.BudgetItemEntity
 import com.example.myapplication.presentation.ui.components.ConfirmDeleteDialog
 import com.example.myapplication.presentation.ui.components.ShareOptionsDialog
@@ -69,8 +72,13 @@ fun BudgetDetailScreen(
     @Suppress("OPT_IN_USAGE")
     val clientSuggestions by viewModel.clientSuggestions.collectAsState()
 
+    val context = LocalContext.current
     LaunchedEffect(uiState.downloadSuccess) {
-        if (uiState.downloadSuccess) viewModel.clearDownloadSuccess()
+        if (uiState.downloadSuccess) {
+            Toast.makeText(context, "PDF guardado en Descargas", Toast.LENGTH_LONG).show()
+            delay(2000)
+            viewModel.clearDownloadSuccess()
+        }
     }
 
     LaunchedEffect(uiState.duplicatedBudgetId) {
