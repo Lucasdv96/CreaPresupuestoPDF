@@ -29,6 +29,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -83,6 +84,13 @@ fun AddItemScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showTypeMenu by remember { mutableStateOf(false) }
+
+    // En modo herrería, el tipo por defecto es FENCE en vez de WINDOW
+    LaunchedEffect(Unit) {
+        if (!uiState.isEditMode && businessType == "HERRERIA" && uiState.type == "WINDOW") {
+            viewModel.updateType("FENCE")
+        }
+    }
 
     if (uiState.itemSaved) {
         onItemAdded()
