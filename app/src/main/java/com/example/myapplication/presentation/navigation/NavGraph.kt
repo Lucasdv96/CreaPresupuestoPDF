@@ -67,6 +67,7 @@ fun AppNavGraph(
     ) {
         composable(Destination.Home.route) {
             HomeScreen(
+                companyLogoPath = settingsState.logoPath,
                 onNavigateToCreateBudget = { navController.navigate(Destination.CreateBudget.route) },
                 onNavigateToClients = { navController.navigate(Destination.ClientList.route) },
                 onNavigateToBudgetList = { navController.navigate(Destination.BudgetList.route) },
