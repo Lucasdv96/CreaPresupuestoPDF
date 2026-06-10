@@ -52,7 +52,7 @@ private val TYPES_WITH_DIMENSIONS = listOf(
     "FENCE", "FENCE_DOOR", "GATE", "STAIR", "GRILL", "GRILL_FRONT",
     "UNDER_COUNTER", "INDUSTRIAL_FURNITURE", "TRAILER", "STORAGE"
 )
-private val TYPES_WITH_PANELS = listOf("WINDOW", "DOOR")
+private val TYPES_WITH_PANELS = listOf("WINDOW", "DOOR", "UNDER_COUNTER")
 
 fun itemTypeLabel(type: String): String = when (type) {
     "WINDOW" -> "Ventana"
