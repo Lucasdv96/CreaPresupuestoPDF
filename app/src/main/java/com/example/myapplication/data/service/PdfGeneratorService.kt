@@ -65,7 +65,7 @@ class PdfGeneratorService(private val context: Context) {
         document.add(Paragraph("\n"))
         val itemsWithDimensions = items.filter { it.widthMm > 0 && it.heightMm > 0 }
         if (itemsWithDimensions.isNotEmpty()) {
-            addTechnicalDetails(document, pdfDocument, itemsWithDimensions)
+            addTechnicalDetails(document, pdfDocument, itemsWithDimensions, settings.logoPath)
             document.add(Paragraph("\n"))
         }
 
@@ -303,14 +303,18 @@ class PdfGeneratorService(private val context: Context) {
     private fun addTechnicalDetails(
         document: Document,
         pdfDocument: PdfDocument,
-        items: List<BudgetItemEntity>
+        items: List<BudgetItemEntity>,
+        logoPath: String = ""
     ) {
         val logoImageData: com.itextpdf.io.image.ImageData? = try {
-            val resId = context.resources.getIdentifier("logo_watermark", "raw", context.packageName)
-            if (resId != 0) {
-                val bytes = context.resources.openRawResource(resId).use { it.readBytes() }
-                ImageDataFactory.create(bytes)
-            } else null
+            if (logoPath.isNotEmpty()) {
+                val f = java.io.File(logoPath)
+                if (f.exists()) ImageDataFactory.create(f.absolutePath) else null
+            } else {
+                val resId = context.resources.getIdentifier("logo_watermark", "raw", context.packageName)
+                if (resId != 0) ImageDataFactory.create(context.resources.openRawResource(resId).use { it.readBytes() })
+                else null
+            }
         } catch (_: Exception) { null }
 
         val headerColor = DeviceRgb(0x1a, 0x4f, 0x8a)
