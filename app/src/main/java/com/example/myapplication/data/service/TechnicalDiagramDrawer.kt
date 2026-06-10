@@ -232,19 +232,12 @@ class TechnicalDiagramDrawer {
         canvas.rectangle(x.toDouble(), handrailY.toDouble(), w.toDouble(), handrailH.toDouble())
         canvas.fillStroke()
 
-        // Riel inferior
+        // Rieles horizontales (inferior + intermedio)
         canvas.setLineWidth(2f)
-        canvas.moveTo(x.toDouble(), bottomRailY.toDouble())
-        canvas.lineTo((x + w).toDouble(), bottomRailY.toDouble())
-        canvas.stroke()
-
-        // Balaustres verticales finos entre el riel inferior y el pasamanos
-        val balCount = (w / 9f).toInt().coerceAtLeast(4)
-        canvas.setLineWidth(0.9f)
-        for (i in 1..balCount) {
-            val bx = x + w * i.toFloat() / (balCount + 1).toFloat()
-            canvas.moveTo(bx.toDouble(), bottomRailY.toDouble())
-            canvas.lineTo(bx.toDouble(), handrailY.toDouble())
+        val midRailY = (bottomRailY + handrailY) / 2f
+        for (railY in listOf(bottomRailY, midRailY)) {
+            canvas.moveTo(x.toDouble(), railY.toDouble())
+            canvas.lineTo((x + w).toDouble(), railY.toDouble())
             canvas.stroke()
         }
 
