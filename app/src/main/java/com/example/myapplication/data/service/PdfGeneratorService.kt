@@ -80,14 +80,20 @@ class PdfGeneratorService(private val context: Context) {
             document.add(Paragraph(budget.notes))
         }
 
+        // La marca de agua del logo solo aparece desde la página donde comienzan
+        // los Términos y Condiciones.
+        var termsStartPage = -1
         if (settings.termsConditions.isNotEmpty()) {
             document.add(Paragraph("\n"))
             document.add(Paragraph("TÉRMINOS Y CONDICIONES").setBold())
+            termsStartPage = pdfDocument.numberOfPages
             document.add(Paragraph(settings.termsConditions).setFontSize(10f))
         }
 
         document.flush()
-        addWatermarks(pdfDocument, settings.logoPath)
+        if (termsStartPage > 0) {
+            addWatermarks(pdfDocument, settings.logoPath, termsStartPage)
+        }
         document.close()
         return pdfFile.absolutePath
     }
@@ -138,7 +144,7 @@ class PdfGeneratorService(private val context: Context) {
         }
     }
 
-    private fun addWatermarks(pdfDocument: PdfDocument, companyLogoPath: String) {
+    private fun addWatermarks(pdfDocument: PdfDocument, companyLogoPath: String, fromPage: Int = 1) {
         try {
             // Usa el logo de la empresa configurado; si no hay, cae al recurso raw
             val imageData = if (companyLogoPath.isNotEmpty()) {
@@ -155,7 +161,7 @@ class PdfGeneratorService(private val context: Context) {
                 ImageDataFactory.create(context.resources.openRawResource(resId).use { it.readBytes() })
             }
 
-            for (i in 1..pdfDocument.numberOfPages) {
+            for (i in fromPage.coerceAtLeast(1)..pdfDocument.numberOfPages) {
                 try {
                     val page = pdfDocument.getPage(i)
                     val pageSize = page.pageSize
