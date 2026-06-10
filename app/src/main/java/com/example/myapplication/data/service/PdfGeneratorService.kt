@@ -374,7 +374,7 @@ class PdfGeneratorService(private val context: Context) {
             specRow("Dimensiones:", "${item.widthMm}mm x ${item.heightMm}mm")
             if (item.description.isNotEmpty()) specRow("Descripción:", item.description)
             if (item.specifications.isNotEmpty()) specRow("Perfil:", item.specifications)
-            if (item.panelCount > 0 && item.type in listOf("WINDOW", "DOOR")) specRow("Hojas:", item.panelCount.toString())
+            if (item.panelCount > 0 && item.type in listOf("WINDOW", "DOOR", "UNDER_COUNTER")) specRow("Hojas:", item.panelCount.toString())
             if (item.notes.isNotEmpty()) specRow("Notas:", item.notes)
 
             infoCell.add(specsTable)
