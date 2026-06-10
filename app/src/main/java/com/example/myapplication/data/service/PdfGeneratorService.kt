@@ -9,8 +9,11 @@ import com.itextpdf.io.image.ImageDataFactory
 import com.itextpdf.kernel.colors.ColorConstants
 import com.itextpdf.kernel.colors.DeviceGray
 import com.itextpdf.kernel.colors.DeviceRgb
+import com.itextpdf.kernel.events.Event
+import com.itextpdf.kernel.events.IEventHandler
 import com.itextpdf.kernel.geom.Rectangle
 import com.itextpdf.kernel.pdf.PdfDocument
+import com.itextpdf.kernel.pdf.PdfDocumentEvent
 import com.itextpdf.kernel.pdf.PdfWriter
 import com.itextpdf.kernel.pdf.canvas.PdfCanvas
 import com.itextpdf.kernel.pdf.extgstate.PdfExtGState
@@ -50,6 +53,9 @@ class PdfGeneratorService(private val context: Context) {
 
         val writer = PdfWriter(pdfFile.absolutePath)
         val pdfDocument = PdfDocument(writer)
+        // Registrar el footer ANTES de agregar contenido para que se dibuje
+        // de forma confiable en cada página (END_PAGE) con la fuente registrada.
+        pdfDocument.addEventHandler(PdfDocumentEvent.END_PAGE, DeveloperFooterHandler())
         val document = Document(pdfDocument)
         document.setBottomMargin(62f)
 
@@ -82,46 +88,54 @@ class PdfGeneratorService(private val context: Context) {
 
         document.flush()
         addWatermarks(pdfDocument, settings.logoPath)
-        addDeveloperFooter(pdfDocument)
         document.close()
         return pdfFile.absolutePath
     }
 
-    private fun addDeveloperFooter(pdfDocument: PdfDocument) {
-        try {
-            val color      = DeviceGray(0.40f)
-            val leftMargin = 36f
-
-            for (i in 1..pdfDocument.numberOfPages) {
-                val page       = pdfDocument.getPage(i)
+    /**
+     * Dibuja el footer del desarrollador en cada página usando el evento END_PAGE.
+     * Se registra antes de agregar contenido, por lo que iText invoca este handler
+     * en el momento exacto en que cada página se finaliza, con los recursos de la
+     * página todavía escribibles (registro de fuente correcto). Esto evita el bug
+     * de footer invisible que ocurría al dibujar después de document.flush().
+     */
+    private inner class DeveloperFooterHandler : IEventHandler {
+        override fun handleEvent(event: Event) {
+            try {
+                val docEvent   = event as PdfDocumentEvent
+                val pdfDoc     = docEvent.document
+                val page       = docEvent.page
                 val pageSize   = page.pageSize
+                val leftMargin = 36f
                 val usableW    = pageSize.width - leftMargin * 2
 
-                val pdfCanvas = PdfCanvas(page.newContentStreamAfter(), page.resources, pdfDocument)
+                val pdfCanvas = PdfCanvas(page.newContentStreamAfter(), page.resources, pdfDoc)
 
                 // Línea separadora
-                pdfCanvas.setStrokeColor(DeviceGray(0.65f))
+                pdfCanvas.saveState()
+                    .setStrokeColor(DeviceGray(0.65f))
                     .setLineWidth(0.5f)
-                    .moveTo(leftMargin.toDouble(), 52.0)
-                    .lineTo((pageSize.width - leftMargin).toDouble(), 52.0)
+                    .moveTo(leftMargin.toDouble(), 50.0)
+                    .lineTo((pageSize.width - leftMargin).toDouble(), 50.0)
                     .stroke()
+                    .restoreState()
 
-                // Texto via Canvas layout (maneja registro de fuentes automáticamente)
-                val footerRect = Rectangle(leftMargin, 10f, usableW, 44f)
+                // Texto via Canvas layout (registra la fuente automáticamente)
+                val footerRect = Rectangle(leftMargin, 8f, usableW, 40f)
                 Canvas(pdfCanvas, footerRect).use { layoutCanvas ->
                     layoutCanvas.add(
                         Paragraph("$FOOTER_LINE1\n$FOOTER_LINE2")
                             .setFontSize(7.5f)
-                            .setFontColor(color)
+                            .setFontColor(DeviceGray(0.40f))
                             .setTextAlignment(TextAlignment.CENTER)
                             .setMargin(0f)
-                            .setMultipliedLeading(1.4f)
+                            .setMultipliedLeading(1.3f)
                     )
                 }
 
                 pdfCanvas.release()
-            }
-        } catch (_: Exception) { }
+            } catch (_: Exception) { }
+        }
     }
 
     private fun addWatermarks(pdfDocument: PdfDocument, companyLogoPath: String) {
