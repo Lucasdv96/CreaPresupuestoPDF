@@ -43,7 +43,7 @@ import com.example.myapplication.presentation.viewmodel.AddItemViewModel
 
 private val CERRAMIENTOS_TYPES = listOf("WINDOW", "DOOR", "RAILING", "OTHER")
 private val HERRERIA_TYPES = listOf(
-    "FENCE", "FENCE_DOOR", "RAILING", "GATE", "STAIR",
+    "FENCE", "FENCE_DOOR", "GATE", "RAILING", "STAIR",
     "GRILL", "GRILL_FRONT", "UNDER_COUNTER", "INDUSTRIAL_FURNITURE",
     "TABLE", "CHAIR", "TRAILER", "STORAGE", "TRASH_CAN", "OTHER"
 )

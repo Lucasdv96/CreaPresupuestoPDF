@@ -219,40 +219,49 @@ class TechnicalDiagramDrawer {
     // ── RAILING ───────────────────────────────────────────────────────────────
 
     private fun drawRailing(canvas: PdfCanvas, x: Float, y: Float, w: Float, h: Float) {
-        val postW  = (w * 0.05f).coerceAtLeast(4f).coerceAtMost(9f)
-        val railH  = (h * 0.14f).coerceAtLeast(5f).coerceAtMost(11f)
-        val balW   = 2.5f
-        val gray   = com.itextpdf.kernel.colors.DeviceGray(0.22f)
-
-        canvas.setLineWidth(0.5f)
-        canvas.setFillColor(gray)
-
-        // Left post
-        canvas.rectangle(x.toDouble(), y.toDouble(), postW.toDouble(), h.toDouble())
-        canvas.fillStroke()
-        // Right post
-        canvas.rectangle((x + w - postW).toDouble(), y.toDouble(), postW.toDouble(), h.toDouble())
-        canvas.fillStroke()
-        // Top handrail
-        canvas.rectangle(x.toDouble(), (y + h - railH).toDouble(), w.toDouble(), railH.toDouble())
-        canvas.fillStroke()
-
-        // Balusters — thin hollow rectangles evenly spaced between posts
-        val innerX = x + postW
-        val innerW = w - postW * 2f
-        val innerY = y
-        val innerH = h - railH
-        val count  = (innerW / 10f).toInt().coerceAtLeast(1)
-
         canvas.setFillColor(com.itextpdf.kernel.colors.DeviceGray(0f))
-        canvas.setLineWidth(0.4f)
-        for (i in 1..count) {
-            val bx = innerX + innerW * i.toFloat() / (count + 1).toFloat() - balW / 2f
-            canvas.rectangle(bx.toDouble(), innerY.toDouble(), balW.toDouble(), innerH.toDouble())
+
+        val handrailH  = (h * 0.10f).coerceIn(4f, 9f)   // grosor del pasamanos superior
+        val handrailY  = y + h - handrailH               // base del pasamanos
+        val bottomRailY = y + h * 0.10f                  // riel inferior
+        val plateW     = 8f
+        val plateH     = 2.5f
+
+        // Pasamanos superior (barra horizontal gruesa)
+        canvas.setLineWidth(1f)
+        canvas.rectangle(x.toDouble(), handrailY.toDouble(), w.toDouble(), handrailH.toDouble())
+        canvas.fillStroke()
+
+        // Riel inferior
+        canvas.setLineWidth(2f)
+        canvas.moveTo(x.toDouble(), bottomRailY.toDouble())
+        canvas.lineTo((x + w).toDouble(), bottomRailY.toDouble())
+        canvas.stroke()
+
+        // Balaustres verticales finos entre el riel inferior y el pasamanos
+        val balCount = (w / 9f).toInt().coerceAtLeast(4)
+        canvas.setLineWidth(0.9f)
+        for (i in 1..balCount) {
+            val bx = x + w * i.toFloat() / (balCount + 1).toFloat()
+            canvas.moveTo(bx.toDouble(), bottomRailY.toDouble())
+            canvas.lineTo(bx.toDouble(), handrailY.toDouble())
             canvas.stroke()
         }
 
-        // Reset fill to black
+        // Postes verticales gruesos (extremos + intermedios) con base al piso
+        val postCount = (w / 70f).toInt().coerceIn(2, 4)
+        canvas.setLineWidth(2.4f)
+        for (i in 0..postCount) {
+            val px = x + w * i.toFloat() / postCount.toFloat()
+            val cx = px.coerceIn(x + 1.5f, x + w - 1.5f)
+            canvas.moveTo(cx.toDouble(), y.toDouble())
+            canvas.lineTo(cx.toDouble(), (y + h).toDouble())
+            canvas.stroke()
+            // Base (placa de anclaje al piso)
+            canvas.rectangle((cx - plateW / 2f).toDouble(), y.toDouble(), plateW.toDouble(), plateH.toDouble())
+            canvas.fill()
+        }
+
         canvas.setFillColor(com.itextpdf.kernel.colors.DeviceGray(0f))
     }
 
@@ -317,54 +326,139 @@ class TechnicalDiagramDrawer {
 
     private fun drawGate(canvas: PdfCanvas, x: Float, y: Float, w: Float, h: Float) {
         val midX = x + w / 2f
-        // Left panel fence
-        drawFence(canvas, x, y, w / 2f - 1f, h)
-        // Right panel fence
-        drawFence(canvas, midX + 1f, y, w / 2f - 1f, h)
-        // Center post
-        canvas.setLineWidth(2f)
+
+        // Marco exterior grueso (líneas negras)
+        canvas.setFillColor(com.itextpdf.kernel.colors.DeviceGray(0f))
+        canvas.setLineWidth(2.5f)
+        canvas.rectangle(x.toDouble(), y.toDouble(), w.toDouble(), h.toDouble())
+        canvas.stroke()
+
+        // Poste central (separa las dos hojas)
+        canvas.setLineWidth(2.5f)
         canvas.moveTo(midX.toDouble(), y.toDouble())
         canvas.lineTo(midX.toDouble(), (y + h).toDouble())
         canvas.stroke()
+
+        // Travesaño horizontal medio en cada hoja (refuerzo)
+        val railY = y + h * 0.5f
+        canvas.setLineWidth(1.6f)
+        canvas.moveTo((x + 2f).toDouble(), railY.toDouble())
+        canvas.lineTo((x + w - 2f).toDouble(), railY.toDouble())
+        canvas.stroke()
+
+        // Barras verticales negras dentro de cada hoja (como en la puerta)
+        val inset = 3f
+        val barsPerLeaf = ((w / 2f) / 9f).toInt().coerceAtLeast(3)
+        canvas.setLineWidth(1.4f)
+        // Hoja izquierda
+        val leftW = (midX - x) - inset * 2f
+        for (i in 1..barsPerLeaf) {
+            val bx = x + inset + leftW * i.toFloat() / (barsPerLeaf + 1).toFloat()
+            canvas.moveTo(bx.toDouble(), (y + inset).toDouble())
+            canvas.lineTo(bx.toDouble(), (y + h - inset).toDouble())
+            canvas.stroke()
+        }
+        // Hoja derecha
+        val rightW = (x + w - midX) - inset * 2f
+        for (i in 1..barsPerLeaf) {
+            val bx = midX + inset + rightW * i.toFloat() / (barsPerLeaf + 1).toFloat()
+            canvas.moveTo(bx.toDouble(), (y + inset).toDouble())
+            canvas.lineTo(bx.toDouble(), (y + h - inset).toDouble())
+            canvas.stroke()
+        }
     }
 
     // ── STAIR (Escalera) ──────────────────────────────────────────────────────
 
     private fun drawStair(canvas: PdfCanvas, x: Float, y: Float, w: Float, h: Float) {
-        val steps = 4
-        val stepW = w / steps
-        val stepH = h / steps
-        val railH = minOf(w, h) * 0.14f
-
-        // Silueta sólida de la escalera (perfil lateral relleno en gris claro)
-        canvas.setFillColor(com.itextpdf.kernel.colors.DeviceGray(0.85f))
-        canvas.setLineWidth(1.5f)
-        canvas.moveTo(x.toDouble(), y.toDouble())
-        for (i in 0 until steps) {
-            val bx = x + stepW * i
-            val by = y + stepH * i
-            canvas.lineTo((bx + stepW).toDouble(), by.toDouble())        // huella (horizontal)
-            canvas.lineTo((bx + stepW).toDouble(), (by + stepH).toDouble()) // contrahuela (vertical)
-        }
-        // Cierra la silueta: pared trasera y base
-        canvas.lineTo(x.toDouble(), (y + h).toDouble())
-        canvas.closePath()
-        canvas.fillStroke()
         canvas.setFillColor(com.itextpdf.kernel.colors.DeviceGray(0f))
 
-        // Pasamanos (línea diagonal por encima del perfil de escalones)
-        canvas.setLineWidth(1.8f)
-        canvas.moveTo((x + 1f).toDouble(), (y + railH).toDouble())
-        canvas.lineTo((x + w).toDouble(), (y + h + railH).toDouble())
+        val groundY    = y
+        val deckY      = y + h * 0.52f          // nivel del piso de la plataforma
+        val railRise   = h * 0.26f              // altura de la baranda sobre el piso/escalón
+        val railTopY   = deckY + railRise       // pasamanos de la plataforma
+        val platformW  = w * 0.30f
+        val platRight  = x + platformW
+        val plateW     = 6f
+        val plateH     = 2.5f
+
+        // ── Plataforma (descanso) ──────────────────────────────────────────────
+        // Piso/deck de la plataforma
+        canvas.setLineWidth(2.5f)
+        canvas.moveTo(x.toDouble(), deckY.toDouble())
+        canvas.lineTo((platRight + 2f).toDouble(), deckY.toDouble())
         canvas.stroke()
 
-        // Montantes del pasamanos en cada escalón
+        // Dos patas con base
+        val legXs = listOf(x + platformW * 0.14f, x + platformW * 0.82f)
+        canvas.setLineWidth(2.2f)
+        for (lx in legXs) {
+            canvas.moveTo(lx.toDouble(), deckY.toDouble())
+            canvas.lineTo(lx.toDouble(), groundY.toDouble())
+            canvas.stroke()
+            // Base (placa)
+            canvas.rectangle((lx - plateW / 2f).toDouble(), groundY.toDouble(), plateW.toDouble(), plateH.toDouble())
+            canvas.fill()
+        }
+
+        // Baranda de la plataforma: pasamanos + postes + balaustres
+        canvas.setLineWidth(2f)
+        canvas.moveTo(x.toDouble(), railTopY.toDouble())
+        canvas.lineTo(platRight.toDouble(), railTopY.toDouble())
+        canvas.stroke()
+        // Postes en los extremos
+        canvas.setLineWidth(2f)
+        for (px in listOf(x + 1.5f, platRight)) {
+            canvas.moveTo(px.toDouble(), deckY.toDouble())
+            canvas.lineTo(px.toDouble(), railTopY.toDouble())
+            canvas.stroke()
+        }
+        // Balaustres de la plataforma
+        canvas.setLineWidth(0.8f)
+        val balCount = (platformW / 9f).toInt().coerceAtLeast(2)
+        for (i in 1..balCount) {
+            val bx = x + platformW * i.toFloat() / (balCount + 1).toFloat()
+            canvas.moveTo(bx.toDouble(), deckY.toDouble())
+            canvas.lineTo(bx.toDouble(), railTopY.toDouble())
+            canvas.stroke()
+        }
+
+        // ── Escalera descendente ───────────────────────────────────────────────
+        val steps    = ((w - platformW) / 16f).toInt().coerceIn(7, 12)
+        val runW      = (x + w) - platRight
+        val riseH     = deckY - groundY
+        val stepRun   = runW / steps
+        val stepRise  = riseH / steps
+
+        // Perfil escalonado (huellas y contrahuellas)
+        canvas.setLineWidth(1.5f)
+        canvas.moveTo(platRight.toDouble(), deckY.toDouble())
+        for (i in 0 until steps) {
+            val sx = platRight + stepRun * i
+            val sy = deckY - stepRise * i
+            canvas.lineTo((sx + stepRun).toDouble(), sy.toDouble())              // huella
+            canvas.lineTo((sx + stepRun).toDouble(), (sy - stepRise).toDouble()) // contrahuella
+        }
+        canvas.stroke()
+
+        // Larguero inferior (viga diagonal de apoyo)
+        canvas.setLineWidth(1.8f)
+        canvas.moveTo(platRight.toDouble(), deckY.toDouble())
+        canvas.lineTo((x + w).toDouble(), groundY.toDouble())
+        canvas.stroke()
+
+        // Baranda de la escalera: pasamanos diagonal + balaustres
+        canvas.setLineWidth(2f)
+        canvas.moveTo(platRight.toDouble(), (deckY + railRise).toDouble())
+        canvas.lineTo((x + w).toDouble(), (groundY + railRise).toDouble())
+        canvas.stroke()
+        // Balaustres verticales sobre cada escalón
         canvas.setLineWidth(0.8f)
         for (i in 0..steps) {
-            val sx = x + stepW * i
-            val sy = y + stepH * i
-            canvas.moveTo(sx.toDouble(), sy.toDouble())
-            canvas.lineTo(sx.toDouble(), (sy + railH).toDouble())
+            val bx = platRight + stepRun * i
+            val byBottom = deckY - stepRise * i
+            canvas.moveTo(bx.toDouble(), byBottom.toDouble())
+            canvas.lineTo(bx.toDouble(), (byBottom + railRise).toDouble())
             canvas.stroke()
         }
     }
@@ -418,27 +512,38 @@ class TechnicalDiagramDrawer {
     // ── UNDER COUNTER (Bajo Mesada) ───────────────────────────────────────────
 
     private fun drawUnderCounter(canvas: PdfCanvas, x: Float, y: Float, w: Float, h: Float) {
-        val counterH = h * 0.12f
+        // Solo las puertas del mueble (sin mesada superior)
+        canvas.setFillColor(com.itextpdf.kernel.colors.DeviceGray(0f))
+
+        // Marco exterior del frente
         canvas.setLineWidth(2f)
-        // Counter top
-        canvas.rectangle(x.toDouble(), (y + h - counterH).toDouble(), w.toDouble(), counterH.toDouble())
+        canvas.rectangle(x.toDouble(), y.toDouble(), w.toDouble(), h.toDouble())
         canvas.stroke()
-        // Cabinet body
-        canvas.setLineWidth(1.2f)
-        canvas.rectangle(x.toDouble(), y.toDouble(), w.toDouble(), (h - counterH).toDouble())
-        canvas.stroke()
-        // Door split
-        canvas.setLineWidth(0.6f)
-        val midX = x + w / 2f
-        canvas.moveTo(midX.toDouble(), y.toDouble())
-        canvas.lineTo(midX.toDouble(), (y + h - counterH).toDouble())
-        canvas.stroke()
-        // Handles
-        for (side in listOf(0.35f, 0.65f)) {
-            val hx = x + w * side
-            val hy = y + (h - counterH) / 2f
-            canvas.circle(hx.toDouble(), hy.toDouble(), 2.5)
+
+        // Cantidad de puertas según el ancho
+        val doors = (w / 38f).toInt().coerceIn(2, 4)
+        val doorW = w / doors
+        val inset = 3f
+
+        canvas.setLineWidth(1f)
+        for (i in 0 until doors) {
+            val dx = x + doorW * i
+            // Panel de cada puerta (recuadro interior)
+            canvas.rectangle(
+                (dx + inset).toDouble(), (y + inset).toDouble(),
+                (doorW - inset * 2f).toDouble(), (h - inset * 2f).toDouble()
+            )
             canvas.stroke()
+
+            // Manija (línea vertical corta cerca del borde interno de la puerta)
+            val handleX = if (i < doors / 2) dx + doorW - inset * 2.2f else dx + inset * 2.2f
+            val handleY0 = y + h * 0.42f
+            val handleY1 = y + h * 0.58f
+            canvas.setLineWidth(2f)
+            canvas.moveTo(handleX.toDouble(), handleY0.toDouble())
+            canvas.lineTo(handleX.toDouble(), handleY1.toDouble())
+            canvas.stroke()
+            canvas.setLineWidth(1f)
         }
     }
 
