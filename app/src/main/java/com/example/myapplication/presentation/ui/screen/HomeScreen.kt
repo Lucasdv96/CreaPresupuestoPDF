@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -45,9 +46,8 @@ fun HomeScreen(
     val logoBitmap = if (companyLogoPath.isNotBlank()) BitmapFactory.decodeFile(companyLogoPath) else null
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
-                    // Muestra el logo de la empresa configurado; si no hay, no se muestra nada
                     if (logoBitmap != null) {
                         Image(
                             bitmap = logoBitmap.asImageBitmap(),
