@@ -116,14 +116,14 @@ fun AddItemScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            SectionTitle("TIPO DE ITEM")
+            SectionTitle("PRODUCTO")
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Tipo:", modifier = Modifier.weight(0.3f))
+                Text("Producto:", modifier = Modifier.weight(0.3f))
                 Button(
                     onClick = { showTypeMenu = true },
                     modifier = Modifier.weight(0.7f)

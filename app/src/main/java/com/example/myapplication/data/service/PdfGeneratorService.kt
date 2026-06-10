@@ -248,7 +248,7 @@ class PdfGeneratorService(private val context: Context) {
         val table = Table(UnitValue.createPercentArray(floatArrayOf(15f, 40f, 10f, 17f, 18f)))
         table.setWidth(UnitValue.createPercentValue(100f))
 
-        listOf("Tipo", "Descripción", "Cant.", "Precio Unit.", "Subtotal").forEach { header ->
+        listOf("Producto", "Descripción", "Cant.", "Precio Unit.", "Subtotal").forEach { header ->
             table.addCell(
                 Cell().add(Paragraph(header).setBold())
                     .setBackgroundColor(ColorConstants.LIGHT_GRAY)
