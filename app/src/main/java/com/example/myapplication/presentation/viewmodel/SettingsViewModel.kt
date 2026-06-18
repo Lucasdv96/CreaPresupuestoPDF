@@ -19,6 +19,7 @@ data class SettingsUiState(
     val companyCity: String = "",
     val termsConditions: String = "",
     val logoPath: String = "",
+    val businessType: String = "CERRAMIENTOS",
     val isSaving: Boolean = false,
     val isSaved: Boolean = false,
     val error: String? = null
@@ -48,7 +49,8 @@ class SettingsViewModel(
                         companyEmail = settings.companyEmail,
                         companyCity = settings.companyCity,
                         termsConditions = settings.termsConditions,
-                        logoPath = settings.logoPath
+                        logoPath = settings.logoPath,
+                        businessType = settings.businessType
                     )
                 }
             } catch (e: Exception) {
@@ -65,6 +67,7 @@ class SettingsViewModel(
     fun updateCompanyCity(value: String) { _uiState.value = _uiState.value.copy(companyCity = value, isSaved = false) }
     fun updateTermsConditions(value: String) { _uiState.value = _uiState.value.copy(termsConditions = value, isSaved = false) }
     fun updateLogoPath(path: String) { _uiState.value = _uiState.value.copy(logoPath = path, isSaved = false) }
+    fun updateBusinessType(value: String) { _uiState.value = _uiState.value.copy(businessType = value, isSaved = false) }
 
     fun saveSettings() {
         val s = _uiState.value
@@ -80,7 +83,8 @@ class SettingsViewModel(
                     companyEmail = s.companyEmail,
                     companyCity = s.companyCity,
                     termsConditions = s.termsConditions,
-                    logoPath = s.logoPath
+                    logoPath = s.logoPath,
+                    businessType = s.businessType
                 )
                 settingsRepository.updateSettings(settings)
                 _uiState.value = _uiState.value.copy(isSaving = false, isSaved = true, error = null)

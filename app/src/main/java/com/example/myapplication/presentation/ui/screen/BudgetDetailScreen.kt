@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.GetApp
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -33,6 +34,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -43,9 +45,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import com.example.myapplication.data.db.entity.BudgetItemEntity
 import com.example.myapplication.presentation.ui.components.ConfirmDeleteDialog
 import com.example.myapplication.presentation.ui.components.ShareOptionsDialog
@@ -67,6 +71,15 @@ fun BudgetDetailScreen(
     val uiState by viewModel.uiState.collectAsState()
     @Suppress("OPT_IN_USAGE")
     val clientSuggestions by viewModel.clientSuggestions.collectAsState()
+
+    val context = LocalContext.current
+    LaunchedEffect(uiState.downloadSuccess) {
+        if (uiState.downloadSuccess) {
+            Toast.makeText(context, "PDF guardado en Descargas", Toast.LENGTH_LONG).show()
+            delay(2000)
+            viewModel.clearDownloadSuccess()
+        }
+    }
 
     LaunchedEffect(uiState.duplicatedBudgetId) {
         if (uiState.duplicatedBudgetId != null) {
@@ -284,17 +297,34 @@ fun BudgetDetailScreen(
                         modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Button(
-                            onClick = viewModel::generateAndShare,
+                        Row(
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = !uiState.isSaving && !uiState.isGeneratingPdf
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            if (uiState.isGeneratingPdf) {
-                                CircularProgressIndicator(modifier = Modifier.padding(end = 4.dp), strokeWidth = 2.dp)
-                            } else {
-                                Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.padding(end = 4.dp))
+                            Button(
+                                onClick = viewModel::generateAndShare,
+                                modifier = Modifier.weight(1f),
+                                enabled = !uiState.isSaving && !uiState.isGeneratingPdf && !uiState.isDownloadingPdf
+                            ) {
+                                if (uiState.isGeneratingPdf) {
+                                    CircularProgressIndicator(modifier = Modifier.padding(end = 4.dp), strokeWidth = 2.dp)
+                                } else {
+                                    Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.padding(end = 4.dp))
+                                }
+                                Text("Compartir")
                             }
-                            Text("Compartir PDF")
+                            OutlinedButton(
+                                onClick = viewModel::downloadPdf,
+                                modifier = Modifier.weight(1f),
+                                enabled = !uiState.isSaving && !uiState.isGeneratingPdf && !uiState.isDownloadingPdf
+                            ) {
+                                if (uiState.isDownloadingPdf) {
+                                    CircularProgressIndicator(modifier = Modifier.padding(end = 4.dp), strokeWidth = 2.dp)
+                                } else {
+                                    Icon(Icons.Filled.GetApp, contentDescription = null, modifier = Modifier.padding(end = 4.dp))
+                                }
+                                Text(if (uiState.downloadSuccess) "¡Guardado!" else "Descargar")
+                            }
                         }
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -365,13 +395,7 @@ fun BudgetItemCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val itemTypeDisplay = when (item.type) {
-        "WINDOW" -> "Ventana"
-        "DOOR" -> "Puerta"
-        "RAILING" -> "Baranda"
-        "LABOR" -> "Mano de obra"
-        else -> "Otro"
-    }
+    val itemTypeDisplay = itemTypeLabel(item.type)
     val subtotal = item.quantity * item.unitPrice
 
     Column(modifier = Modifier.fillMaxWidth().padding(8.dp)) {

@@ -24,7 +24,8 @@ class SettingsRepository(private val settingsDao: SettingsDao) {
                 logoPath = "",
                 primaryColor = "#7CB342",
                 secondaryColor = "#333333",
-                termsConditions = ""
+                termsConditions = "",
+                businessType = "CERRAMIENTOS"
             )
             settingsDao.insert(defaultSettings)
             defaultSettings

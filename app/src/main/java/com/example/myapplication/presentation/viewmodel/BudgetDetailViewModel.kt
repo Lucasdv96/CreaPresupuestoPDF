@@ -31,6 +31,8 @@ data class BudgetDetailUiState(
     val showShareOptions: Boolean = false,
     val lastGeneratedPdfPath: String? = null,
     val duplicatedBudgetId: Int? = null,
+    val isDownloadingPdf: Boolean = false,
+    val downloadSuccess: Boolean = false,
     val editProjectName: String = "",
     val editLaborCost: String = "",
     val editClientName: String = "",
@@ -423,6 +425,34 @@ class BudgetDetailViewModel(
         }
     }
 
+    fun downloadPdf() {
+        val budget = _uiState.value.budget ?: return
+        val items = _uiState.value.items
+        val settings = _uiState.value.settings ?: run {
+            _uiState.value = _uiState.value.copy(error = "Error: configuración no disponible")
+            return
+        }
+        viewModelScope.launch {
+            try {
+                _uiState.value = _uiState.value.copy(isDownloadingPdf = true, error = null, downloadSuccess = false)
+                val client = clientRepository.getClientById(budget.clientId)
+                val pdfPath = pdfGeneratorService.generateBudgetPdf(budget, items, client, settings)
+                val ok = sharingService.downloadPdfToPublicStorage(pdfPath, budget.budgetNumber)
+                _uiState.value = _uiState.value.copy(
+                    isDownloadingPdf = false,
+                    downloadSuccess = ok,
+                    error = if (!ok) "No se pudo guardar en Descargas" else null
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isDownloadingPdf = false,
+                    error = "Error al descargar PDF: ${e.message}"
+                )
+            }
+        }
+    }
+
+    fun clearDownloadSuccess() { _uiState.value = _uiState.value.copy(downloadSuccess = false) }
     fun clearDuplicatedBudgetId() { _uiState.value = _uiState.value.copy(duplicatedBudgetId = null) }
     fun dismissShareOptions() { _uiState.value = _uiState.value.copy(showShareOptions = false) }
     fun clearPdfPath() { _uiState.value = _uiState.value.copy(pdfPath = null) }

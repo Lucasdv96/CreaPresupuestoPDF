@@ -3,16 +3,21 @@ package com.example.myapplication.data.service
 import android.content.Context
 import com.example.myapplication.data.db.entity.BudgetEntity
 import com.example.myapplication.data.db.entity.BudgetItemEntity
-import com.example.myapplication.utils.formatCurrency
 import com.example.myapplication.data.db.entity.SettingsEntity
+import com.example.myapplication.utils.formatCurrency
 import com.itextpdf.io.image.ImageDataFactory
 import com.itextpdf.kernel.colors.ColorConstants
+import com.itextpdf.kernel.colors.DeviceGray
 import com.itextpdf.kernel.colors.DeviceRgb
+import com.itextpdf.kernel.events.Event
+import com.itextpdf.kernel.events.IEventHandler
+import com.itextpdf.kernel.events.PdfDocumentEvent
 import com.itextpdf.kernel.geom.Rectangle
 import com.itextpdf.kernel.pdf.PdfDocument
 import com.itextpdf.kernel.pdf.PdfWriter
 import com.itextpdf.kernel.pdf.canvas.PdfCanvas
 import com.itextpdf.kernel.pdf.extgstate.PdfExtGState
+import com.itextpdf.layout.Canvas
 import com.itextpdf.layout.Document
 import com.itextpdf.layout.borders.SolidBorder
 import com.itextpdf.layout.element.Cell
@@ -28,6 +33,9 @@ import java.util.Date
 import java.util.Locale
 
 class PdfGeneratorService(private val context: Context) {
+
+    private val FOOTER_LINE1 = "App creada por Lucas Del Valle · Fullstack Developer  |  lucas.delvalle1996@gmail.com  |  wa.me/542267450234"
+    private val FOOTER_LINE2 = "lucasdv-developer.vercel.app  |  linkedin.com/in/lucas-del-valle-740277163"
 
     private val diagramDrawer = TechnicalDiagramDrawer()
 
@@ -45,7 +53,11 @@ class PdfGeneratorService(private val context: Context) {
 
         val writer = PdfWriter(pdfFile.absolutePath)
         val pdfDocument = PdfDocument(writer)
+        // Registrar el footer ANTES de agregar contenido para que se dibuje
+        // de forma confiable en cada página (END_PAGE) con la fuente registrada.
+        pdfDocument.addEventHandler(PdfDocumentEvent.END_PAGE, DeveloperFooterHandler())
         val document = Document(pdfDocument)
+        document.setBottomMargin(62f)
 
         addCompanyHeader(document, settings)
         document.add(Paragraph("\n"))
@@ -53,7 +65,7 @@ class PdfGeneratorService(private val context: Context) {
         document.add(Paragraph("\n"))
         val itemsWithDimensions = items.filter { it.widthMm > 0 && it.heightMm > 0 }
         if (itemsWithDimensions.isNotEmpty()) {
-            addTechnicalDetails(document, pdfDocument, itemsWithDimensions)
+            addTechnicalDetails(document, pdfDocument, itemsWithDimensions, settings.logoPath)
             document.add(Paragraph("\n"))
         }
 
@@ -68,26 +80,88 @@ class PdfGeneratorService(private val context: Context) {
             document.add(Paragraph(budget.notes))
         }
 
+        // La marca de agua del logo solo aparece desde la página donde comienzan
+        // los Términos y Condiciones.
+        var termsStartPage = -1
         if (settings.termsConditions.isNotEmpty()) {
             document.add(Paragraph("\n"))
             document.add(Paragraph("TÉRMINOS Y CONDICIONES").setBold())
+            termsStartPage = pdfDocument.numberOfPages
             document.add(Paragraph(settings.termsConditions).setFontSize(10f))
         }
 
         document.flush()
-        addWatermarks(pdfDocument)
+        if (termsStartPage > 0) {
+            addWatermarks(pdfDocument, settings.logoPath, termsStartPage)
+        }
         document.close()
         return pdfFile.absolutePath
     }
 
-    private fun addWatermarks(pdfDocument: PdfDocument) {
-        try {
-            val resId = context.resources.getIdentifier("logo_watermark", "raw", context.packageName)
-            if (resId == 0) return
-            val logoBytes = context.resources.openRawResource(resId).use { it.readBytes() }
-            val imageData = ImageDataFactory.create(logoBytes)
+    /**
+     * Dibuja el footer del desarrollador en cada página usando el evento END_PAGE.
+     * Se registra antes de agregar contenido, por lo que iText invoca este handler
+     * en el momento exacto en que cada página se finaliza, con los recursos de la
+     * página todavía escribibles (registro de fuente correcto). Esto evita el bug
+     * de footer invisible que ocurría al dibujar después de document.flush().
+     */
+    private inner class DeveloperFooterHandler : IEventHandler {
+        override fun handleEvent(event: Event) {
+            try {
+                val docEvent   = event as PdfDocumentEvent
+                val pdfDoc     = docEvent.document
+                val page       = docEvent.page
+                val pageSize   = page.pageSize
+                val leftMargin = 36f
+                val usableW    = pageSize.width - leftMargin * 2
 
-            for (i in 1..pdfDocument.numberOfPages) {
+                val pdfCanvas = PdfCanvas(page.newContentStreamAfter(), page.resources, pdfDoc)
+
+                // Línea separadora
+                pdfCanvas.saveState()
+                    .setStrokeColor(DeviceGray(0.65f))
+                    .setLineWidth(0.5f)
+                    .moveTo(leftMargin.toDouble(), 50.0)
+                    .lineTo((pageSize.width - leftMargin).toDouble(), 50.0)
+                    .stroke()
+                    .restoreState()
+
+                // Texto via Canvas layout (registra la fuente automáticamente)
+                val footerRect = Rectangle(leftMargin, 8f, usableW, 40f)
+                Canvas(pdfCanvas, footerRect).use { layoutCanvas ->
+                    layoutCanvas.add(
+                        Paragraph("$FOOTER_LINE1\n$FOOTER_LINE2")
+                            .setFontSize(7.5f)
+                            .setFontColor(DeviceGray(0.40f))
+                            .setTextAlignment(TextAlignment.CENTER)
+                            .setMargin(0f)
+                            .setMultipliedLeading(1.3f)
+                    )
+                }
+
+                pdfCanvas.release()
+            } catch (_: Exception) { }
+        }
+    }
+
+    private fun addWatermarks(pdfDocument: PdfDocument, companyLogoPath: String, fromPage: Int = 1) {
+        try {
+            // Usa el logo de la empresa configurado; si no hay, cae al recurso raw
+            val imageData = if (companyLogoPath.isNotEmpty()) {
+                val f = java.io.File(companyLogoPath)
+                if (f.exists()) ImageDataFactory.create(f.absolutePath)
+                else {
+                    val resId = context.resources.getIdentifier("logo_watermark", "raw", context.packageName)
+                    if (resId == 0) return
+                    ImageDataFactory.create(context.resources.openRawResource(resId).use { it.readBytes() })
+                }
+            } else {
+                val resId = context.resources.getIdentifier("logo_watermark", "raw", context.packageName)
+                if (resId == 0) return
+                ImageDataFactory.create(context.resources.openRawResource(resId).use { it.readBytes() })
+            }
+
+            for (i in fromPage.coerceAtLeast(1)..pdfDocument.numberOfPages) {
                 try {
                     val page = pdfDocument.getPage(i)
                     val pageSize = page.pageSize
@@ -174,7 +248,7 @@ class PdfGeneratorService(private val context: Context) {
         val table = Table(UnitValue.createPercentArray(floatArrayOf(15f, 40f, 10f, 17f, 18f)))
         table.setWidth(UnitValue.createPercentValue(100f))
 
-        listOf("Tipo", "Descripción", "Cant.", "Precio Unit.", "Subtotal").forEach { header ->
+        listOf("Producto", "Descripción", "Cant.", "Precio Unit.", "Subtotal").forEach { header ->
             table.addCell(
                 Cell().add(Paragraph(header).setBold())
                     .setBackgroundColor(ColorConstants.LIGHT_GRAY)
@@ -183,12 +257,7 @@ class PdfGeneratorService(private val context: Context) {
         }
 
         items.forEach { item ->
-            val itemType = when (item.type) {
-                "WINDOW" -> "Ventana"
-                "DOOR" -> "Puerta"
-                "RAILING" -> "Baranda"
-                else -> "Otro"
-            }
+            val itemType = itemTypeDisplayName(item.type)
             val subtotal = item.quantity * item.unitPrice
 
             // 5. Descripción + especificaciones + notas en la misma celda
@@ -240,14 +309,18 @@ class PdfGeneratorService(private val context: Context) {
     private fun addTechnicalDetails(
         document: Document,
         pdfDocument: PdfDocument,
-        items: List<BudgetItemEntity>
+        items: List<BudgetItemEntity>,
+        logoPath: String = ""
     ) {
         val logoImageData: com.itextpdf.io.image.ImageData? = try {
-            val resId = context.resources.getIdentifier("logo_watermark", "raw", context.packageName)
-            if (resId != 0) {
-                val bytes = context.resources.openRawResource(resId).use { it.readBytes() }
-                ImageDataFactory.create(bytes)
-            } else null
+            if (logoPath.isNotEmpty()) {
+                val f = java.io.File(logoPath)
+                if (f.exists()) ImageDataFactory.create(f.absolutePath) else null
+            } else {
+                val resId = context.resources.getIdentifier("logo_watermark", "raw", context.packageName)
+                if (resId != 0) ImageDataFactory.create(context.resources.openRawResource(resId).use { it.readBytes() })
+                else null
+            }
         } catch (_: Exception) { null }
 
         val headerColor = DeviceRgb(0x1a, 0x4f, 0x8a)
@@ -259,22 +332,13 @@ class PdfGeneratorService(private val context: Context) {
                 .setFontColor(headerColor)
         )
 
-        val typePrefixes = mutableMapOf("WINDOW" to 0, "DOOR" to 0, "RAILING" to 0, "OTHER" to 0)
+        val typeCounters = mutableMapOf<String, Int>()
 
         items.forEachIndexed { _, item ->
-            val prefix = when (item.type) {
-                "WINDOW"  -> { typePrefixes["WINDOW"] = typePrefixes["WINDOW"]!! + 1; "V" }
-                "DOOR"    -> { typePrefixes["DOOR"]   = typePrefixes["DOOR"]!!   + 1; "P" }
-                "RAILING" -> { typePrefixes["RAILING"]= typePrefixes["RAILING"]!!+ 1; "B" }
-                else      -> { typePrefixes["OTHER"]  = typePrefixes["OTHER"]!!  + 1; "O" }
-            }
-            val itemCode = "$prefix${typePrefixes[item.type]!!.toString().padStart(2, '0')}"
-            val typeLabel = when (item.type) {
-                "WINDOW"  -> "Ventana"
-                "DOOR"    -> "Puerta"
-                "RAILING" -> "Baranda"
-                else      -> "Otro"
-            }
+            typeCounters[item.type] = (typeCounters[item.type] ?: 0) + 1
+            val prefix = itemTypePrefix(item.type)
+            val itemCode = "$prefix${typeCounters[item.type]!!.toString().padStart(2, '0')}"
+            val typeLabel = itemTypeDisplayName(item.type)
 
             // Card outer table: full width, slight top margin
             val card = Table(UnitValue.createPercentArray(floatArrayOf(100f)))
@@ -320,7 +384,7 @@ class PdfGeneratorService(private val context: Context) {
             specRow("Dimensiones:", "${item.widthMm}mm x ${item.heightMm}mm")
             if (item.description.isNotEmpty()) specRow("Descripción:", item.description)
             if (item.specifications.isNotEmpty()) specRow("Perfil:", item.specifications)
-            if (item.panelCount > 0 && item.type in listOf("WINDOW", "DOOR")) specRow("Hojas:", item.panelCount.toString())
+            if (item.panelCount > 0 && item.type in listOf("WINDOW", "DOOR", "UNDER_COUNTER")) specRow("Hojas:", item.panelCount.toString())
             if (item.notes.isNotEmpty()) specRow("Notas:", item.notes)
 
             infoCell.add(specsTable)
@@ -352,6 +416,46 @@ class PdfGeneratorService(private val context: Context) {
             card.addCell(Cell().add(contentTable).setBorder(null).setPadding(0f))
             document.add(card)
         }
+    }
+
+    private fun itemTypeDisplayName(type: String): String = when (type) {
+        "WINDOW"               -> "Ventana"
+        "DOOR"                 -> "Puerta"
+        "RAILING"              -> "Baranda"
+        "FENCE"                -> "Reja"
+        "FENCE_DOOR"           -> "Puerta Reja"
+        "GATE"                 -> "Portón"
+        "STAIR"                -> "Escalera"
+        "GRILL"                -> "Parrilla"
+        "GRILL_FRONT"          -> "Frente de Parrilla"
+        "UNDER_COUNTER"        -> "Bajo Mesada"
+        "INDUSTRIAL_FURNITURE" -> "Mueble Industrial"
+        "TABLE"                -> "Mesa"
+        "CHAIR"                -> "Silla"
+        "TRAILER"              -> "Trailer"
+        "STORAGE"              -> "Baulera"
+        "TRASH_CAN"            -> "Tacho de Basura"
+        else                   -> "Otro"
+    }
+
+    private fun itemTypePrefix(type: String): String = when (type) {
+        "WINDOW"               -> "V"
+        "DOOR"                 -> "P"
+        "RAILING"              -> "B"
+        "FENCE"                -> "R"
+        "FENCE_DOOR"           -> "PR"
+        "GATE"                 -> "PT"
+        "STAIR"                -> "ES"
+        "GRILL"                -> "PA"
+        "GRILL_FRONT"          -> "FP"
+        "UNDER_COUNTER"        -> "BM"
+        "INDUSTRIAL_FURNITURE" -> "MI"
+        "TABLE"                -> "ME"
+        "CHAIR"                -> "SI"
+        "TRAILER"              -> "TR"
+        "STORAGE"              -> "BA"
+        "TRASH_CAN"            -> "TB"
+        else                   -> "O"
     }
 
     private fun formatDate(timestamp: Long): String =
